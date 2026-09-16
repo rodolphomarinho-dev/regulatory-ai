@@ -1,0 +1,13 @@
+{
+  "name": "regulatory-ai",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Rodolpho Marinho's regulatory AI portfolio and synthetic workflow demonstrations",
+  "scripts": {
+    "start": "node scripts/serve.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "check": "node scripts/check.mjs"
+  },
+  "engines": { "node": ">=20" }
+}
