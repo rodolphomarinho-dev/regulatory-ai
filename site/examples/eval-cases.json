@@ -1,0 +1,13 @@
+{
+  "scope": "Synthetic deterministic workflow checks. Not an evaluation of model accuracy or regulatory effectiveness.",
+  "cases": [
+    { "id": "audit-gap", "kind": "audit", "settings": { "evidence": "missing", "focus": "capa" }, "expect": { "machineGate": "review-with-unresolved-evidence", "contract": "audit-challenge-hypotheses/v1", "itemId": "A-01" } },
+    { "id": "audit-conflict", "kind": "audit", "settings": { "evidence": "conflict", "focus": "data" }, "expect": { "machineGate": "review-with-unresolved-evidence", "contract": "audit-challenge-hypotheses/v1", "itemId": "A-02" } },
+    { "id": "audit-covered", "kind": "audit", "settings": { "evidence": "complete", "focus": "capa" }, "expect": { "machineGate": "passed-for-review", "contract": "audit-challenge-hypotheses/v1", "itemId": "A-03" } },
+    { "id": "presub-gap", "kind": "submission", "settings": { "mode": "presub", "evidence": "missing" }, "expect": { "machineGate": "passed-for-review", "contract": "presub-answer-rehearsal/v1", "itemId": "P-01" } },
+    { "id": "submission-gap", "kind": "submission", "settings": { "mode": "submission", "evidence": "missing" }, "expect": { "machineGate": "passed-for-review", "contract": "submission-challenge-review/v1", "itemId": "S-01" } },
+    { "id": "orchestration-pass", "kind": "orchestration", "settings": { "packet": "complete" }, "expect": { "machineGate": "passed-for-review", "contract": "evidence-review-package/v1", "itemId": "O-01" } },
+    { "id": "orchestration-missing", "kind": "orchestration", "settings": { "packet": "missing" }, "expect": { "machineGate": "blocked", "contract": "evidence-review-package/v1", "itemId": "O-01" } },
+    { "id": "orchestration-conflict", "kind": "orchestration", "settings": { "packet": "conflict" }, "expect": { "machineGate": "blocked", "contract": "evidence-review-package/v1", "itemId": "O-01" } }
+  ]
+}
