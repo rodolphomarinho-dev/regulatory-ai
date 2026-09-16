@@ -2,6 +2,8 @@
 
 **Data science, with a regulatory backbone. Model-agnostic. Harness-first.**
 
+[Open the live workbench ↗](https://rodolphomarinho-dev.github.io/regulatory-ai/) · [GitHub profile](https://github.com/rodolphomarinho-dev)
+
 Across my workflow: Astra, Ona, Perplexity, Antigravity, Gemini, ChatGPT and Codex. Models, platforms and tools — not a claim that they are interchangeable products. The task and the evals guide the choice.
 
 A personal portfolio and small, runnable examples of the work I build: audit preparation, submission rehearsal and evidence-led orchestration.
