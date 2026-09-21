@@ -38,15 +38,17 @@ test('Pre-Submission outputs do not invent deficiency findings', () => {
 test('blocked source gates prevent specialist execution', () => {
   for (const packet of ['missing', 'conflict']) {
     const r = runScenario('orchestration', { packet });
-    assert.equal(r.trace[1].state, 'stopped');
-    assert.equal(r.trace[2].state, 'held');
-    assert.match(r.trace[2].detail, /Not executed/);
+    const sourceGate = r.trace.find(entry => entry.step === 'Source gate');
+    const specialists = r.trace.find(entry => entry.step === 'Specialist roles');
+    assert.equal(sourceGate.state, 'stopped');
+    assert.equal(specialists.state, 'held');
+    assert.match(specialists.detail, /Not executed/);
   }
 });
 test('complete sources do not authorize release', () => {
   const r = runScenario('orchestration', { packet: 'complete' });
-  assert.equal(r.trace[3].state, 'passed');
-  assert.equal(r.trace[4].state, 'held');
+  assert.equal(r.trace.find(entry => entry.step === 'Output contract').state, 'passed');
+  assert.equal(r.trace.find(entry => entry.step === 'Human review · L5').state, 'held');
   assert.equal(r.releaseStatus, 'not-authorized');
 });
 test('invalid values and unknown demos are rejected', () => {
