@@ -1,4 +1,5 @@
 // Public teaching examples, rebuilt from scratch. No company data or live AI.
+import { addEvaluationCheckpoints } from './eval-workflow.mjs';
 export const modes = Object.freeze({
   audit: {
     title: 'Audit simulation',
@@ -20,7 +21,8 @@ export const modes = Object.freeze({
     title: 'Orchestration layers',
     description: 'Inspect the handoffs. A useful orchestration layer knows when to run, when to stop and what a human still needs to decide.',
     fields: [
-      { id: 'packet', label: 'Input condition', options: [['complete', 'Sources linked; versions agree'], ['missing', 'A required source is missing'], ['conflict', 'Two source versions conflict']] }
+      { id: 'packet', label: 'Input condition', options: [['complete', 'Sources linked; versions agree'], ['missing', 'A required source is missing'], ['conflict', 'Two source versions conflict']] },
+      { id: 'evalCase', label: 'In-process eval', options: [['clear', 'No mismatch in this fixture'], ['machinery', 'Machinery mapping discrepancy'], ['uncertain', 'Unclear regulatory applicability']] }
     ]
   }
 });
@@ -91,9 +93,9 @@ function submission({ evidence, mode }) {
   result.evaluationPlan = { freezeInput: true, withholdActualAuthorityResponse: true, reviewBy: 'Independent SMEs', measures: ['Useful challenges', 'Unsupported claims', 'Missed material issues', 'Source traceability'], measuredModelPerformance: null };
   return result;
 }
-function orchestration({ packet }) {
+function orchestration({ packet, evalCase }) {
   const sources = [source('MANIFEST-01', 'Synthetic packet manifest', packet === 'missing' ? 'Approved product context listed as required but absent.' : packet === 'conflict' ? 'Product context v1 and v2 contain different claims. The authoritative version has not been resolved.' : 'Product context v2, prior-feedback extract v1 and scope v1 are present. Versions and record links match this fixture.')];
-  const result = base('orchestration', { packet }, sources);
+  const result = base('orchestration', { packet, evalCase }, sources);
   const clear = packet === 'complete';
   result.title = clear ? 'Machine checks pass. Human authority remains.' : 'Stop the unsupported path.';
   result.status = clear ? 'Awaiting human review' : 'Blocked at source gate';
@@ -109,7 +111,7 @@ function orchestration({ packet }) {
     { step: 'Human review', state: 'held', detail: clear ? 'Awaiting accountable review. No automatic approval or publication.' : 'Escalate the evidence problem to its owner.' }
   ];
   result.items.push(item('O-01', clear ? 'Package eligible for review only' : 'Resolve source condition', result.question, ['MANIFEST-01'], clear ? 'Reviewer decision' : 'Blocks this run', 'Deterministic fixture condition'));
-  return result;
+  return addEvaluationCheckpoints(result, evalCase);
 }
 export function runScenario(kind, settings = {}) {
   if (!Object.hasOwn(modes, kind)) throw new Error('Unknown demonstration');
@@ -127,10 +129,22 @@ function cell(value) {
   return '"' + text.replaceAll('"', '""') + '"';
 }
 export function toCSV(result) {
-  const rows = [['id', 'title', 'detail', 'priority', 'evidence_confidence', 'source_refs', 'synthetic', 'release_status']];
-  for (const i of result.items) rows.push([i.id, i.title, i.detail, i.priority, i.evidenceConfidence, i.sourceRefs.join('; '), 'true', result.releaseStatus]);
+  const rows = [['id', 'title', 'detail', 'priority', 'evidence_confidence', 'source_refs', 'synthetic', 'release_status', 'record_type', 'state', 'review_path']];
+  const path = result.reviewSimulation?.path ?? 'not-selected';
+  for (const i of result.items) rows.push([i.id, i.title, i.detail, i.priority, i.evidenceConfidence, i.sourceRefs.join('; '), 'true', result.releaseStatus, 'finding', result.status, path]);
+  for (const e of result.evaluations ?? []) rows.push([`L${e.layer}`, e.name, e.detail, '', 'Synthetic fixture only', '', 'true', result.releaseStatus, 'checkpoint', e.state, path]);
+  if (result.escalation) rows.push([result.escalation.id, 'Main agent update', JSON.stringify(result.escalation), 'Review required', 'Not measured', result.escalation.sourceRefs.join('; '), 'true', result.releaseStatus, 'escalation', result.escalation.action, path]);
+  if (result.originalIssue) rows.push([result.originalIssue.id, 'Original issue before disposition', JSON.stringify(result.originalIssue), 'Review required', 'Not measured', result.originalIssue.sourceRefs.join('; '), 'true', result.releaseStatus, 'original-issue', result.originalIssue.action, path]);
+  if (result.reviewSimulation) rows.push(['REVIEW-01', result.reviewSimulation.title, result.reviewSimulation.rationale, 'Final human review still required', 'Hypothetical', 'REVIEW-01', 'true', result.releaseStatus, 'hypothetical-review', 'not-real-approval', path]);
+  for (const e of result.events ?? []) rows.push([e.id, e.kind, JSON.stringify(e), '', 'Synthetic event', '', 'true', result.releaseStatus, 'event', e.disposition, path]);
   return rows.map(row => row.map(cell).join(',')).join('\r\n') + '\r\n';
 }
 export function toMarkdown(result) {
-  return [`# ${result.title}`, '', '**Synthetic demonstration — deterministic fixture, no live AI.**', '', `Status: ${result.status}`, `Contract: ${result.contract}`, `Release: ${result.releaseStatus}`, '', result.summary, '', '## First question', '', result.question, '', ...result.items.flatMap(i => [`## ${i.id} · ${i.title}`, '', i.detail, '', `Priority: ${i.priority} | Evidence confidence: ${i.evidenceConfidence}`, `Sources: ${i.sourceRefs.join(', ')}`, '']), '## Source packet', '', ...result.sources.flatMap(s => [`### ${s.id} · ${s.title}`, '', s.text, '']), '## Boundary', '', result.limitation, ''].join('\n');
+  const evaluation = result.evaluations ? ['## Evaluation checkpoints', '', ...result.evaluations.flatMap(e => [`### L${e.layer} · ${e.name} · ${e.state}`, '', e.detail, ''])] : [];
+  const escalation = result.escalation ? ['## Main agent update', '', `Issue: ${result.escalation.id} | Owner: ${result.escalation.owner}`, `Signal: ${result.escalation.outcomeSignal} | Action: ${result.escalation.action}`, `Sources: ${result.escalation.sourceRefs.join(', ')}`, '', result.escalation.reason, '', 'Simulated local event only; no message or live Jev call.', ''] : [];
+  const review = result.reviewSimulation ? ['## Hypothetical team disposition', '', result.reviewSimulation.title, '', result.reviewSimulation.rationale, '', result.reviewSimulation.next, '', 'No real approval. Final human review and release remain outside this demo.', ''] : [];
+  const trace = result.trace.length ? ['## Orchestration trace', '', ...result.trace.map(t => `- ${t.step} [${t.state}]: ${t.detail}`), ''] : [];
+  const original = result.originalIssue ? ['## Original issue before disposition', '', `Issue: ${result.originalIssue.id} | Signal: ${result.originalIssue.outcomeSignal} | Action: ${result.originalIssue.action}`, `Sources: ${result.originalIssue.sourceRefs.join(', ')}`, '', result.originalIssue.reason, ''] : [];
+  const events = result.events?.length ? ['## Synthetic event ledger', '', ...result.events.map(e => `- ${e.id}: ${e.kind} → ${e.to} | ${e.issue} | ${e.disposition}`), ''] : [];
+  return [`# ${result.title}`, '', '**Synthetic demonstration — deterministic fixture, no live AI.**', '', `Status: ${result.status}`, `Contract: ${result.contract}`, `Release: ${result.releaseStatus}`, '', result.summary, '', '## First question', '', result.question, '', ...result.items.flatMap(i => [`## ${i.id} · ${i.title}`, '', i.detail, '', `Priority: ${i.priority} | Evidence confidence: ${i.evidenceConfidence}`, `Sources: ${i.sourceRefs.join(', ')}`, '']), ...evaluation, ...escalation, ...original, ...review, ...trace, ...events, '## Source packet', '', ...result.sources.flatMap(s => [`### ${s.id} · ${s.title}`, '', s.text, '']), '## Boundary', '', result.limitation, ''].join('\n');
 }
